@@ -1,220 +1,726 @@
-SpotMe.Ai
-AI-Powered Event Photo Retrieval Using Face Recognition and Vector Similarity Search
+# 📸 SpotMe.Ai
 
-SpotMe.Ai is an AI-powered event photography system designed to solve a simple but tedious problem:
+### AI-Powered Event Photo Retrieval Using Face Recognition & Vector Similarity Search
 
-Given a photograph of yourself, can the system find all the event photographs in which you appear?
+SpotMe.Ai is an AI-powered photo retrieval system designed to help users quickly find their photographs from large collections of event images.
 
-At large events, photographers may capture thousands of photographs. Manually searching through these images is time-consuming and inconvenient. SpotMe.Ai automates this process by converting faces into numerical representations called facial embeddings and using vector similarity search to efficiently retrieve visually similar faces.
+Instead of manually searching through hundreds or thousands of photographs, a user provides a **query photograph containing their face**. The system detects the face, generates a numerical **facial embedding**, and searches a database of previously generated embeddings using **vector similarity search**.
 
-The system combines:
+The project combines **computer vision, deep learning, vector databases, PostgreSQL, and approximate nearest-neighbor search** to build an efficient visual retrieval pipeline.
 
-Face detection and recognition
-Facial embedding generation
-Image preprocessing
-Google Drive image retrieval
-PostgreSQL
-pgvector
-HNSW approximate nearest-neighbor indexing
-Similarity-based retrieval
-Python-based backend processing
+---
 
-The core idea is:
+## ✨ What Problem Does SpotMe.Ai Solve?
 
-Event Photographs
-       │
-       ▼
-   Face Detection
-       │
-       ▼
- Face Embedding
-       │
-       ▼
- Vector Representation
-       │
-       ▼
- PostgreSQL + pgvector
-       │
-       ▼
- HNSW Vector Index
-       │
-       │
-       │       Query Photograph
-       │              │
-       │              ▼
-       │        Face Detection
-       │              │
-       │              ▼
-       │       Query Embedding
-       │              │
-       └──────────────┤
-                      ▼
-              Similarity Search
-                      │
-                      ▼
-             Matching Photographs
-1. Problem Statement
+At events such as college fests, conferences, competitions, and social gatherings, photographers can capture thousands of photographs.
 
-Consider an event with several thousand photographs.
+Finding photographs of one particular person manually is:
 
-A participant wants to find all photographs in which they appear.
+* ⏳ Time-consuming
+* 🔍 Difficult to scale
+* 😵 Tedious for users
+* 📷 Dependent on manually browsing every photograph
 
-A conventional approach would require:
+SpotMe.Ai converts this into a visual search problem.
 
-Opening the complete photo collection.
-Looking through photographs one by one.
-Manually identifying photographs containing the person.
-Repeating the process for every participant.
+### Traditional Approach
 
-This approach becomes increasingly impractical as the number of photographs grows.
+```text
+Thousands of Photos
+        │
+        ▼
+Manually Browse Photos
+        │
+        ▼
+Find Yourself
+        │
+        ▼
+Repeat...
+```
 
-SpotMe.Ai approaches the problem as a visual information retrieval problem.
+### SpotMe.Ai Approach
 
-Instead of comparing images manually, the system converts faces into numerical vectors and searches for vectors that are mathematically similar to the query person's face.
+```text
+                Query Photo
+                     │
+                     ▼
+               Face Detection
+                     │
+                     ▼
+            Facial Embedding
+                     │
+                     ▼
+          Vector Similarity Search
+                     │
+                     ▼
+            Matching Photographs
+```
 
-2. Project Objective
+---
 
-The main objective of SpotMe.Ai is to provide an efficient pipeline for:
+# 🚀 Key Features
 
-Collecting event photographs
-Detecting faces in photographs
-Generating facial embeddings
-Storing embeddings efficiently
-Searching embeddings using vector similarity
-Returning photographs containing visually similar faces
+* 🤖 AI-based face recognition
+* 🧠 Facial embedding generation using InsightFace
+* 📁 Google Drive based image retrieval
+* 🖼️ Image preprocessing using OpenCV
+* 🗄️ PostgreSQL database integration
+* 🔢 Vector storage using pgvector
+* ⚡ HNSW approximate nearest-neighbor indexing
+* 🔎 Similarity-based image retrieval
+* 📊 Retrieval latency testing
+* 🐍 Python-based processing pipeline
 
-The system separates the problem into two major phases:
+---
 
-                 SPOTME.AI
+# 🏗️ System Architecture
+
+The system is divided into two major stages:
+
+1. **Indexing / Database Creation**
+2. **Query / Photo Retrieval**
+
+```text
+                         ┌──────────────────────┐
+                         │     EVENT PHOTOS     │
+                         │     Google Drive     │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │   Image Downloading  │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Face Detection    │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │ Face Embedding       │
+                         │ Generation           │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │ PostgreSQL + pgvector│
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │     HNSW Index       │
+                         └──────────┬───────────┘
+                                    │
+                                    │
+                         ┌──────────▼───────────┐
+                         │    Query Photograph  │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │ Query Face Embedding │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │  Vector Similarity   │
+                         │       Search         │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │ Matching Photographs │
+                         └──────────────────────┘
+```
+
+---
+
+# 🔄 End-to-End Workflow
+
+The complete pipeline can be understood as:
+
+```text
+┌─────────────────┐
+│ Event Photos    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Download Images │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Detect Faces    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Generate        │
+│ Face Embeddings │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Store Embeddings│
+│ in PostgreSQL   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ HNSW Vector     │
+│ Index           │
+└────────┬────────┘
+         │
+         │
+         │        ┌─────────────────┐
+         └────────│ Query Image     │
+                  └────────┬────────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │ Detect Query    │
+                  │ Face            │
+                  └────────┬────────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │ Generate Query  │
+                  │ Embedding       │
+                  └────────┬────────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │ Vector Search   │
+                  └────────┬────────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │ Ranked Matching │
+                  │ Photographs     │
+                  └─────────────────┘
+```
+
+---
+
+# 🧠 1. Face Detection & Embedding Generation
+
+The first important step is converting photographs into representations that can be searched efficiently.
+
+SpotMe.Ai uses **InsightFace** for face analysis.
+
+Instead of comparing entire photographs pixel-by-pixel, the system first identifies the face.
+
+```text
+                 Input Photograph
+                        │
+                        ▼
+                ┌───────────────┐
+                │ Face Detector │
+                └───────┬───────┘
+                        │
+                        ▼
+                   Detected Face
+                        │
+                        ▼
+                ┌───────────────┐
+                │ Neural Network│
+                └───────┬───────┘
+                        │
+                        ▼
+                Face Embedding
+                        │
+                        ▼
+             [e₁, e₂, e₃, ..., eₙ]
+```
+
+A facial embedding is a numerical representation of a face.
+
+For example:
+
+```text
+Face
+ │
+ ▼
+[ 0.12, -0.43, 0.81, 0.05, ... ]
+ │
+ ▼
+Numerical Representation
+```
+
+The important idea is that similar faces should produce embeddings that are close to each other in the embedding space.
+
+---
+
+# 🎯 2. Why Use Face Embeddings?
+
+Direct image comparison is unreliable because the same person can appear under different conditions:
+
+* Different lighting
+* Different camera angles
+* Different facial expressions
+* Different backgrounds
+* Different image resolutions
+* Different distances from the camera
+
+Instead of comparing pixels:
+
+```text
+Image A ──────────────── Image B
+        Pixel Comparison
+```
+
+SpotMe.Ai compares learned representations:
+
+```text
+Image A                    Image B
+   │                          │
+   ▼                          ▼
+Embedding A              Embedding B
+   │                          │
+   └───────────┬──────────────┘
+               ▼
+        Vector Similarity
+```
+
+This makes the retrieval process much more robust than direct pixel comparison.
+
+---
+
+# 🔢 3. Understanding the Embedding Space
+
+An embedding can be represented mathematically as:
+
+```text
+E = [e₁, e₂, e₃, ..., eₙ]
+```
+
+Every photograph containing a detected face can therefore be represented by a point in a high-dimensional vector space.
+
+Conceptually:
+
+```text
+                 Embedding Space
+
+                      Person B
+                         ●
+                        /
+                       /
+             Query ●──● Person A
+                  \
+                   \
+                    ● Person A
+```
+
+Faces that are more similar tend to occupy nearby regions of this space.
+
+This allows the system to perform **nearest-neighbor search**.
+
+---
+
+# 🗄️ 4. Database Architecture
+
+SpotMe.Ai uses:
+
+* **PostgreSQL** for structured data
+* **pgvector** for storing and searching embeddings
+* **HNSW** for efficient approximate nearest-neighbor retrieval
+
+Conceptually, a stored record can contain:
+
+```text
+┌─────────────────────────────────┐
+│          Photo Record           │
+├─────────────────────────────────┤
+│ Photo ID                        │
+│ File Name                       │
+│ File Metadata                   │
+│ Face Information                │
+│ Face Embedding                  │
+└─────────────────────────────────┘
+```
+
+The embedding is the key component used during similarity search.
+
+---
+
+# 🔢 5. Why PostgreSQL + pgvector?
+
+Traditional relational databases are excellent for structured information:
+
+```text
+photo_id
+filename
+event_id
+timestamp
+metadata
+```
+
+However, facial embeddings are high-dimensional numerical vectors.
+
+**pgvector** allows these vectors to be stored and searched directly inside PostgreSQL.
+
+```text
+                 PostgreSQL
                      │
           ┌──────────┴──────────┐
           │                     │
           ▼                     ▼
-     Indexing Phase         Retrieval Phase
-          │                     │
-          ▼                     ▼
- Process Event Photos      Process Query Photo
-          │                     │
-          ▼                     ▼
- Generate Embeddings      Generate Query Embedding
-          │                     │
-          ▼                     ▼
- Store Vectors            Vector Similarity Search
-          │                     │
-          └──────────┬──────────┘
+   Structured Data        Face Embeddings
+                                │
+                                ▼
+                             pgvector
+                                │
+                                ▼
+                         Vector Search
+```
+
+This keeps metadata and vector representations within the same database architecture.
+
+---
+
+# 🔎 6. Vector Similarity Search
+
+Suppose the database contains:
+
+```text
+Photo 001 → Embedding A
+Photo 002 → Embedding B
+Photo 003 → Embedding C
+Photo 004 → Embedding D
+...
+```
+
+When a user uploads a query photograph:
+
+```text
+Query Image
+     │
+     ▼
+Query Face
+     │
+     ▼
+Query Embedding Q
+```
+
+The system searches for embeddings that are closest to `Q`.
+
+Conceptually:
+
+```text
+                Embedding Space
+
+                     B ●
+                      /
+                     /
+              Q ●───● A
+                   /
+                  /
+                 ● C
+
+                         ● D
+```
+
+The closest vectors become the strongest candidates for matching photographs.
+
+---
+
+# 📐 7. Vector Similarity
+
+For two vectors:
+
+```text
+A = [a₁, a₂, ..., aₙ]
+
+B = [b₁, b₂, ..., bₙ]
+```
+
+one common similarity measure is **cosine similarity**:
+
+```text
+              A · B
+cos(θ) = ─────────────
+         ||A|| ||B||
+```
+
+A higher similarity indicates that the vectors point in more similar directions.
+
+The vector database handles the mathematical search over the stored embeddings.
+
+---
+
+# ⚡ 8. Why HNSW?
+
+A naive implementation could compare the query embedding against every stored embedding:
+
+```text
+                    Query
+                      │
+       ┌──────────────┼──────────────┐
+       ▼              ▼              ▼
+   Vector 1       Vector 2       Vector 3
+       │              │              │
+       └──────────────┼──────────────┘
+                      │
+                     ...
+                      │
+                      ▼
+                   Vector N
+```
+
+For a small dataset this can work.
+
+But as the number of embeddings grows, searching every vector for every query becomes increasingly expensive.
+
+This is where **HNSW** is useful.
+
+---
+
+# 🌐 9. HNSW — Hierarchical Navigable Small World
+
+HNSW stands for:
+
+> **Hierarchical Navigable Small World**
+
+It is an **Approximate Nearest Neighbor (ANN)** indexing algorithm.
+
+Instead of scanning every vector, HNSW organizes vectors into a graph with multiple hierarchical layers.
+
+A simplified representation:
+
+```text
+Level 2:
+
+        A ───────── D
+         \          /
+          \        /
+             B
+
+
+Level 1:
+
+     A ─── B ─── C ─── D
+      \     │     │
+       \    │     │
+        E ──F──── G
+
+
+Level 0:
+
+A ─ B ─ C ─ D ─ E ─ F ─ G ─ H ─ I ─ J ─ K
+```
+
+Higher levels provide longer-range connections.
+
+Lower levels contain more detailed connections.
+
+---
+
+# 🧭 10. How HNSW Search Works
+
+When a query vector `Q` arrives, the search conceptually works like this:
+
+```text
+                  Query Q
+                     │
                      ▼
-              Matching Photos
-3. High-Level Architecture
-                         ┌───────────────────────┐
-                         │    Event Photo Set    │
-                         │   Google Drive /      │
-                         │   Local Collection    │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │   Image Downloading   │
-                         │     & Processing      │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │    Face Detection     │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │ Facial Embedding      │
-                         │     Generation        │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │       pgvector        │
-                         │   Vector Storage      │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │      HNSW Index       │
-                         │ Approximate NN Search │
-                         └───────────┬───────────┘
-                                     │
-                                     │
-                         ┌───────────▼───────────┐
-                         │    Query Photograph   │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │ Query Face Embedding  │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │ Similarity Search     │
-                         └───────────┬───────────┘
-                                     │
-                                     ▼
-                         ┌───────────────────────┐
-                         │ Matching Photographs  │
-                         └───────────────────────┘
-4. End-to-End Workflow
+              Start at upper layer
+                     │
+                     ▼
+            Find promising neighbor
+                     │
+                     ▼
+             Move toward Q
+                     │
+                     ▼
+             Descend a layer
+                     │
+                     ▼
+           Refine candidate region
+                     │
+                     ▼
+                 Level 0
+                     │
+                     ▼
+             Nearest Candidates
+```
 
-The complete system can be understood as two pipelines.
+Instead of exploring the entire vector space, the algorithm navigates through increasingly relevant regions.
 
-Phase A — Building the Image Database
-Google Drive
-     │
-     ▼
-Retrieve image/file information
-     │
-     ▼
-Download photographs
-     │
-     ▼
-Read image
-     │
-     ▼
-Detect face(s)
-     │
-     ▼
-Generate embedding
-     │
-     ▼
-Store embedding + metadata
-     │
-     ▼
-Create/search through vector index
-Phase B — Finding a Person
-User Query Image
-       │
-       ▼
-Read image
-       │
-       ▼
-Detect face
-       │
-       ▼
-Generate query embedding
-       │
-       ▼
-Compare against stored embeddings
-       │
-       ▼
-Rank by similarity
-       │
-       ▼
-Apply retrieval criteria
-       │
-       ▼
-Return matching photographs
-5. Image Retrieval From Google Drive
+---
 
-The project includes functionality for retrieving photographs from Google Drive.
+# ⚔️ 11. Brute Force vs HNSW
 
-The image acquisition pipeline can be represented as:
+### Brute Force
 
+```text
+Query
+ │
+ ├── Compare → Vector 1
+ ├── Compare → Vector 2
+ ├── Compare → Vector 3
+ ├── Compare → Vector 4
+ ├── ...
+ └── Compare → Vector N
+```
+
+### HNSW
+
+```text
+Query
+ │
+ ▼
+Entry Point
+ │
+ ▼
+Promising Region
+ │
+ ▼
+Closer Region
+ │
+ ▼
+Local Search
+ │
+ ▼
+Nearest Candidates
+```
+
+### Trade-off
+
+| Approach    | Search Strategy                       | Scalability |
+| ----------- | ------------------------------------- | ----------- |
+| Brute Force | Compare against every vector          | Lower       |
+| HNSW        | Navigate graph toward nearest vectors | Higher      |
+
+HNSW provides approximate nearest-neighbor retrieval, trading a small amount of exactness for substantially more efficient search.
+
+---
+
+# 🏗️ 12. HNSW Index Construction
+
+Conceptually, when embeddings are added:
+
+```text
+New Embedding
+      │
+      ▼
+Assign Graph Level
+      │
+      ▼
+Find Nearby Embeddings
+      │
+      ▼
+Create Graph Connections
+      │
+      ▼
+Add to HNSW Structure
+```
+
+Over time, these connections form a navigable graph that can be used during query-time retrieval.
+
+---
+
+# 🔄 13. Query-Time Retrieval
+
+Once the database and vector index have been created, a query follows this pipeline:
+
+```text
+┌───────────────────────┐
+│     Query Image       │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│    Face Detection     │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│ Query Face Embedding  │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│    pgvector Search    │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│     HNSW Index        │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│ Nearest Neighbor      │
+│ Search                │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│ Similarity Ranking    │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│ Matching Photographs  │
+└───────────────────────┘
+```
+
+---
+
+# 🗂️ 14. Indexing vs Retrieval
+
+A major design principle in SpotMe.Ai is separating **indexing** from **retrieval**.
+
+## Indexing Phase
+
+The expensive processing happens while building the searchable database:
+
+```text
+Event Photos
+     │
+     ▼
+Face Detection
+     │
+     ▼
+Embedding Generation
+     │
+     ▼
+Database Storage
+     │
+     ▼
+HNSW Index
+```
+
+## Retrieval Phase
+
+Once the index exists, users do not need to process every event photograph again.
+
+```text
+Query Photo
+     │
+     ▼
+Query Embedding
+     │
+     ▼
+HNSW Search
+     │
+     ▼
+Matching Photos
+```
+
+This makes repeated queries much more efficient.
+
+---
+
+# ☁️ 15. Google Drive Image Retrieval
+
+The project can retrieve event photographs from Google Drive.
+
+The process is:
+
+```text
 Google Drive Folder
         │
         ▼
@@ -231,853 +737,435 @@ Retrieve File Metadata
 Identify Image Files
         │
         ▼
-Download Image
+Download Images
         │
         ▼
-Local Image Processing
+Image Processing Pipeline
+```
 
-The downloader uses the Google Drive API to retrieve file metadata and subsequently download image data.
+File IDs provide a stable way of identifying files instead of relying only on filenames.
 
-The important advantage of working with file IDs is that the system does not need to rely on the visible filename alone. The Drive file ID uniquely identifies the file.
+---
 
-6. Image Processing Pipeline
+# 🧩 16. Project Modules
 
-Once photographs have been downloaded, they enter the computer vision pipeline.
+The repository is organized around different stages of the processing pipeline.
 
-Input Image
-    │
-    ▼
-Image Loading
-    │
-    ▼
-Image Preprocessing
-    │
-    ▼
-Face Detection
-    │
-    ▼
-Face Alignment / Processing
-    │
-    ▼
-Face Representation
-    │
-    ▼
-Embedding Vector
+| File                    | Responsibility                            |
+| ----------------------- | ----------------------------------------- |
+| `download.py`           | Retrieves and downloads event images      |
+| `embedding_generate.py` | Generates facial embeddings               |
+| `database.py`           | Database configuration and operations     |
+| `save_to_database.py`   | Stores embeddings and related information |
+| `retrive.py`            | Retrieves matching vectors/photos         |
+| `compare.py`            | Performs similarity/comparison operations |
+| `main.py`               | Main processing/orchestration             |
+| `test_latency.py`       | Measures retrieval latency                |
+| `requirment.txt`        | Python dependencies                       |
 
-The project uses computer vision libraries such as OpenCV and NumPy as part of the processing pipeline.
+---
 
-7. Face Recognition With InsightFace
+# 🔀 17. Project Data Flow
 
-SpotMe.Ai uses InsightFace for face analysis.
-
-Instead of representing an entire photograph directly, the system focuses on the detected face.
-
-A face is transformed into a numerical representation called a facial embedding.
-
-Conceptually:
-
-              Photograph
-                  │
-                  ▼
-            Face Detector
-                  │
-         ┌────────┴────────┐
-         │                 │
-      Background          Face
-                           │
-                           ▼
-                     Face Analysis
-                           │
-                           ▼
-                    Neural Network
-                           │
-                           ▼
-                   Face Embedding
-
-A facial embedding can be thought of as a point in a high-dimensional mathematical space.
-
-For example, conceptually:
-
-Face
- │
- ▼
-[ 0.12, -0.43, 0.81, 0.05, ... ]
-          │
-          │
-          ▼
-   Numerical Vector
-
-The individual values are not human-readable descriptions such as:
-
-"brown hair"
-"male"
-"wearing glasses"
-
-Instead, the neural network learns a representation in which faces that are visually/identity-wise similar tend to have embeddings that are closer together.
-
-8. Why Embeddings?
-
-Direct pixel comparison is not reliable for face retrieval.
-
-The same person can appear in photographs with:
-
-Different lighting
-Different backgrounds
-Different camera angles
-Different expressions
-Different distances from the camera
-Different image resolutions
-
-Pixel-level comparison would therefore be extremely sensitive to these changes.
-
-Embeddings provide a more useful representation.
-
-Conceptually:
-
-             Similar Person
-                  │
-        ┌─────────┴─────────┐
-        ▼                   ▼
-     Photo A             Photo B
-        │                   │
-        ▼                   ▼
-   Embedding A          Embedding B
-        │                   │
-        └─────────┬─────────┘
-                  ▼
-          Small Vector Distance
-
-While two unrelated people are expected to produce more distant representations:
-
- Person A                     Person B
-    │                            │
-    ▼                            ▼
-Embedding A                  Embedding B
-    │                            │
-    └───────────┬────────────────┘
-                ▼
-          Larger Distance
-9. What Exactly Is an Embedding?
-
-An embedding is a vector:
-
-E = [e₁, e₂, e₃, ..., eₙ]
-
-where each component is a numerical feature learned by the neural network.
-
-The embedding transforms a complicated visual input into a representation that can be compared mathematically.
-
-Instead of asking:
-
-"Do these two images have similar pixels?"
-
-the system asks:
-
-"Are the representations of the detected faces close in embedding space?"
-
-This makes vector similarity search possible.
-
-10. Database Architecture
-
-SpotMe.Ai uses PostgreSQL as the database.
-
-The project also uses pgvector, which provides support for storing and querying vector embeddings inside PostgreSQL.
-
-Conceptually, a record can contain:
-
-┌─────────────────────────────────────────┐
-│              Photo Record               │
-├─────────────────────────────────────────┤
-│ photo_id                                │
-│ file_name                               │
-│ file_path / metadata                   │
-│ face information                        │
-│ embedding vector                        │
-└─────────────────────────────────────────┘
-
-The important field for similarity search is the embedding vector.
-
-11. Why PostgreSQL + pgvector?
-
-A conventional relational database is excellent for structured information such as:
-
-photo_id
-filename
-timestamp
-event_id
-
-However, face embeddings are high-dimensional vectors.
-
-pgvector extends PostgreSQL so that vector data can be stored and searched alongside conventional relational data.
-
-This gives the system a unified architecture:
-
-                  PostgreSQL
-                      │
-        ┌─────────────┴─────────────┐
-        │                           │
-        ▼                           ▼
- Structured Metadata          Face Embeddings
-        │                           │
-        │                           ▼
-        │                       pgvector
-        │                           │
-        └──────────────┬────────────┘
+```text
+                   Google Drive
+                        │
+                        ▼
+                 ┌─────────────┐
+                 │ download.py │
+                 └──────┬──────┘
+                        │
+                        ▼
+                    Images
+                        │
+                        ▼
+            ┌──────────────────────┐
+            │ embedding_generate.py│
+            └───────────┬──────────┘
+                        │
+                        ▼
+                 Face Embeddings
+                        │
+                        ▼
+             ┌────────────────────┐
+             │ save_to_database.py │
+             └──────────┬─────────┘
+                        │
+                        ▼
+               PostgreSQL/pgvector
+                        │
+                        ▼
+                   HNSW Index
+                        │
+                        ▼
+                ┌──────────────┐
+                │  retrive.py  │
+                └──────┬───────┘
+                       │
                        ▼
-                Vector Search
-12. Vector Similarity Search
+                ┌──────────────┐
+                │ compare.py   │
+                └──────┬───────┘
+                       │
+                       ▼
+                 Search Results
+```
 
-Suppose the database contains:
+---
 
-Photo 1 → Embedding A
-Photo 2 → Embedding B
-Photo 3 → Embedding C
-Photo 4 → Embedding D
+# 📊 18. Performance & Latency
+
+The repository contains `test_latency.py` for evaluating retrieval latency.
+
+A query's total latency can be viewed as:
+
+```text
+Total Query Latency
+        │
+        ├── Image Loading
+        │
+        ├── Face Detection
+        │
+        ├── Embedding Generation
+        │
+        ├── Database Query
+        │
+        └── Vector Search
+```
+
+HNSW becomes particularly valuable as the number of stored embeddings increases because it avoids a naive full scan of the vector collection.
+
+---
+
+# 📈 19. Scalability Concept
+
+Without an ANN index:
+
+```text
+N stored embeddings
+        │
+        ▼
+Compare query with N vectors
+```
+
+With HNSW:
+
+```text
+N stored embeddings
+        │
+        ▼
+Graph Navigation
+        │
+        ▼
+Relevant Search Region
+        │
+        ▼
+Nearest Candidates
+```
+
+The architecture therefore separates expensive preprocessing from repeated retrieval operations.
+
+---
+
+# 🧪 20. Example Retrieval Scenario
+
+Imagine an event with **5,000 photographs**.
+
+After indexing:
+
+```text
+Photo 001 → Embedding
+Photo 002 → Embedding
+Photo 003 → Embedding
 ...
+Photo 5000 → Embedding
+```
 
-A user provides a query photograph.
+A participant uploads a query photograph.
 
-The system generates:
-
+```text
 Query Image
      │
      ▼
 Query Embedding Q
-
-The system then searches for vectors closest to Q.
-
-Conceptually:
-
-                 Embedding Space
-
-                      B
-                     /
-                    /
-             Q ●───A
-                  /
-                 /
-                C
-
-                       D
-
-If Q represents the user's face, vectors near Q are candidates for matching photographs.
-
-13. Similarity and Distance
-
-Vector search requires a mathematical measure of similarity or distance.
-
-For two vectors:
-
-A = [a₁, a₂, ..., aₙ]
-
-B = [b₁, b₂, ..., bₙ]
-
-one common measure is cosine similarity:
-
-              A · B
-cos(θ) = ─────────────
-         ||A|| ||B||
-
-The closer the cosine similarity is to 1, the more aligned the vectors are.
-
-The project uses vector-based retrieval through pgvector, allowing embeddings to be compared efficiently inside PostgreSQL.
-
-14. Why HNSW?
-
-A simple approach would be to compare the query embedding against every stored embedding.
-
-For N stored vectors:
-
-Query
-  │
-  ├── Compare with Vector 1
-  ├── Compare with Vector 2
-  ├── Compare with Vector 3
-  ├── ...
-  └── Compare with Vector N
-
-For a small dataset this may be acceptable.
-
-But event photography can contain thousands or potentially much larger collections.
-
-Performing a full scan for every query becomes expensive.
-
-This is where HNSW becomes useful.
-
-15. HNSW — Hierarchical Navigable Small World
-
-HNSW stands for:
-
-Hierarchical Navigable Small World
-
-It is an approximate nearest-neighbor search algorithm.
-
-Instead of comparing the query against every vector, HNSW organizes vectors into a graph structure that allows the search to navigate toward promising candidates.
-
-A simplified conceptual representation:
-
-                 Level 2
-              A -------- D
-               \          /
-                \        /
-                 \      /
-                  B
-
-                 Level 1
-          A ------ B ------ C ------ D
-           \       |        |
-            \      |        |
-             E ----F--------G
-
-                 Level 0
-      A--B--C--D--E--F--G--H--I--J--K
-
-The upper levels contain fewer nodes and provide long-range connections.
-
-The lower levels contain more detailed connections.
-
-16. How HNSW Search Works
-
-Suppose the query vector is Q.
-
-A simplified search looks like:
-
-                 Query Q
-                    │
-                    ▼
-            Start at upper layer
-                    │
-                    ▼
-          Find promising neighbor
-                    │
-                    ▼
-          Move toward closer vector
-                    │
-                    ▼
-             Descend a level
-                    │
-                    ▼
-          Refine candidate search
-                    │
-                    ▼
-             Reach Level 0
-                    │
-                    ▼
-          Return nearest candidates
-
-Instead of searching every vector, the algorithm navigates through a graph toward the nearest region.
-
-17. HNSW vs Brute-Force Search
-Brute Force
-                 Query
-                   │
-       ┌───────────┼───────────┐
-       ▼           ▼           ▼
-      V1          V2          V3  ... VN
-       │           │           │
-       └───────────┴───────────┘
-                   │
-                   ▼
-             Rank all vectors
-HNSW
-                 Query
-                   │
-                   ▼
-              Entry Point
-                   │
-                   ▼
-           Promising Region
-                   │
-                   ▼
-             Better Region
-                   │
-                   ▼
-              Local Search
-                   │
-                   ▼
-             Top Candidates
-
-The trade-off is that HNSW performs approximate nearest-neighbor search. It is designed to dramatically reduce search work while maintaining high-quality nearest-neighbor results.
-
-18. HNSW Index Construction
-
-Conceptually, when vectors are inserted:
-
-Embedding
-    │
-    ▼
-Choose graph level
-    │
-    ▼
-Find neighboring vectors
-    │
-    ▼
-Create graph connections
-    │
-    ▼
-Store vector in HNSW structure
-
-Over time, the database develops a navigable graph of vectors.
-
-The result is an index optimized for nearest-neighbor queries.
-
-19. Query-Time Retrieval
-
-When a user submits a photograph:
-
-                 Query Image
-                      │
-                      ▼
-                Face Detection
-                      │
-                      ▼
-             Query Face Embedding
-                      │
-                      ▼
-               pgvector Search
-                      │
-                      ▼
-                 HNSW Index
-                      │
-             ┌────────┴────────┐
-             ▼                 ▼
-       Candidate 1       Candidate 2
-             │                 │
-             └────────┬────────┘
-                      ▼
-              Similarity Ranking
-                      │
-                      ▼
-             Matching Photographs
-
-The retrieved vectors can then be associated with their corresponding photograph metadata.
-
-20. Complete Retrieval Pipeline
-
-The entire retrieval process can be summarized as:
-
-┌─────────────────────────┐
-│     User Query Photo    │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│      Load Image         │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│     Detect Face         │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│ Generate Face Embedding  │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│     Vector Query        │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│      HNSW Index         │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│ Nearest Neighbor Search │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│ Similarity Ranking      │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│ Matching Event Photos   │
-└─────────────────────────┘
-21. Indexing vs Retrieval
-
-One of the most important design concepts in the project is the separation between indexing and retrieval.
-
-Indexing
-
-Indexing is performed when building the searchable photo collection.
-
-Photos
-  ↓
-Detect Faces
-  ↓
-Generate Embeddings
-  ↓
-Store Embeddings
-  ↓
-Build/Search Vector Index
-
-This work does not need to be repeated for every user query.
-
-Retrieval
-
-Retrieval occurs whenever a user searches for themselves.
-
-Query Photo
-  ↓
-Generate One Query Embedding
-  ↓
-Search Existing Index
-  ↓
-Return Results
-
-This separation makes repeated searches much more efficient.
-
-22. Project Components
-
-The repository contains several Python modules responsible for different parts of the pipeline.
-
-File	Purpose
-download.py	Retrieves image/file information and downloads photographs
-embedding_generate.py	Generates facial embeddings
-database.py	Handles database-related functionality
-save_to_database.py	Stores processed information/embeddings
-retrive.py	Performs retrieval/search operations
-compare.py	Performs comparison-related operations
-main.py	Main project entry point / orchestration
-test_latency.py	Used for latency/performance testing
-requirment.txt	Python dependency list
-23. Data Flow
-
-A simplified data flow through the system looks like this:
-
-                Google Drive
-                     │
-                     ▼
-              download.py
-                     │
-                     ▼
-              Image Files
-                     │
-                     ▼
-         embedding_generate.py
-                     │
-                     ▼
-            Face Embeddings
-                     │
-                     ▼
-           save_to_database.py
-                     │
-                     ▼
-            PostgreSQL/pgvector
-                     │
-                     ▼
-              Vector Index
-                     │
-                     │
-                     ▼
-              retrive.py
-                     │
-                     ▼
-              compare.py
-                     │
-                     ▼
-             Search Results
-24. Database Workflow
-
-The database interaction can be understood in four stages.
-
-Stage 1 — Image Processing
-Image → Face → Embedding
-Stage 2 — Storage
-Embedding + Photo Metadata
-            │
-            ▼
-      PostgreSQL
-Stage 3 — Indexing
-Stored Embeddings
-        │
-        ▼
-   pgvector/HNSW
-        │
-        ▼
-Searchable Vector Space
-Stage 4 — Retrieval
-Query Embedding
-      │
-      ▼
-Vector Search
-      │
-      ▼
-Nearest Embeddings
-      │
-      ▼
-Associated Photos
-25. Why Vector Databases Are Useful for This Problem
-
-Traditional keyword search works well for queries such as:
-
-"photos from January 10"
-"photos from event A"
-
-But the question:
-
-"Find photographs containing this person"
-
-is fundamentally different.
-
-There is no useful keyword that directly describes a person's identity in an arbitrary image.
-
-Instead, the query itself is visual.
-
-Therefore:
-
-Traditional Search:
-
-Text Query → Keywords → Matching Records
-
-
-SpotMe.Ai:
-
-Image Query → Face Embedding → Vector Similarity → Matching Photos
-
-This makes vector search a natural fit for the problem.
-
-26. Efficiency Considerations
-
-The system is designed around the idea of precomputation.
-
-Instead of repeatedly performing expensive processing:
-
-Every Query
-    ↓
-Process every event image
-    ↓
-Detect every face
-    ↓
-Generate every embedding
-    ↓
-Compare everything
-
-the system performs the expensive work during indexing:
-
-              One-Time Processing
-                     │
-                     ▼
-             Generate Embeddings
-                     │
-                     ▼
-              Store + Index
-                     │
-                     ▼
-          ┌──────────┴──────────┐
-          │          │          │
-        Query 1    Query 2    Query 3
-          │          │          │
-          ▼          ▼          ▼
-       Fast Vector Retrieval
-
-This is particularly valuable when the same event photo collection is searched by many different users.
-
-27. Approximate Nearest Neighbor Search
-
-HNSW belongs to the family of Approximate Nearest Neighbor (ANN) algorithms.
-
-The key trade-off is:
-
-Exact Search
      │
-     ├── Maximum exactness
-     └── Potentially expensive at scale
+     ▼
+HNSW Search
+```
 
+The system may identify candidates such as:
 
-Approximate Search
-     │
-     ├── Much faster search
-     ├── Scales better
-     └── Very high-quality candidates
+```text
+Photo 1842 → High similarity
+Photo 2731 → High similarity
+Photo 3910 → High similarity
+Photo 4127 → Moderate similarity
+```
 
-For image retrieval systems, this trade-off is often highly practical because the goal is to retrieve the most relevant photographs efficiently.
+The associated photographs can then be returned to the user.
 
-28. Performance Testing
+---
 
-The repository also contains:
+# ⚠️ 21. Real-World Challenges
 
-test_latency.py
+Face retrieval systems have to deal with real-world conditions such as:
 
-which is used for evaluating retrieval latency.
+* No face detected
+* Multiple faces in an image
+* Low-resolution photographs
+* Poor lighting
+* Extreme viewing angles
+* Partial face visibility
+* Duplicate images
+* Large photo collections
+* Network failures
+* Database connectivity issues
 
-Latency is important because the user experience depends not only on whether the correct photographs are found, but also on how quickly they are returned.
+These factors can affect both embedding quality and retrieval accuracy.
 
-The overall performance can be viewed as:
+---
 
-Total Query Time
-       │
-       ├── Image Loading
-       │
-       ├── Face Detection
-       │
-       ├── Embedding Generation
-       │
-       ├── Database Query
-       │
-       └── Vector Search
+# 🛠️ Technology Stack
 
-The vector index is particularly important when the number of stored embeddings increases.
+### Machine Learning & Computer Vision
 
-29. Scalability
+* **Python**
+* **InsightFace**
+* **OpenCV**
+* **NumPy**
 
-The architecture is designed with larger photo collections in mind.
+### Database
 
-Without vector indexing:
+* **PostgreSQL**
+* **pgvector**
 
-N photos
-   ↓
-N vector comparisons per query
+### Vector Search
 
-With an ANN index such as HNSW:
+* **HNSW**
+* Approximate Nearest Neighbor Search
 
-N photos
-   ↓
-Graph-based navigation
-   ↓
-Small candidate region
-   ↓
-Nearest-neighbor results
+### Data Source
 
-This allows the search system to remain practical as the number of stored embeddings grows.
+* **Google Drive API**
 
-30. Example
+### Backend / Processing
 
-Suppose an event contains 5,000 photographs.
+* Python-based processing pipeline
+* FastAPI components where applicable
 
-After processing, the database might conceptually contain:
+---
 
-Photo 001 → Face Embedding
-Photo 002 → Face Embedding
-Photo 003 → Face Embedding
-...
-Photo 5000 → Face Embedding
+# 💻 Installation
 
-A user uploads a photograph of themselves.
+## 1. Clone the Repository
 
-The system generates:
+```bash
+git clone https://github.com/rajkamalprasad23/SpotMe.Ai.git
+cd SpotMe.Ai
+```
 
-Query → Q
+## 2. Create a Virtual Environment
 
-The vector search then identifies:
+```bash
+python -m venv venv
+```
 
-Q
-│
-├── Photo 1842 → High similarity
-├── Photo 2731 → High similarity
-├── Photo 3910 → High similarity
-├── Photo 4127 → Moderate similarity
-└── ...
+### Windows
 
-The system can then return the most relevant photographs.
+```powershell
+venv\Scripts\activate
+```
 
-31. Error and Edge-Case Considerations
+## 3. Install Dependencies
 
-A practical face retrieval system must account for situations such as:
+```bash
+pip install -r requirment.txt
+```
 
-No face detected
-Multiple faces detected
-Low-quality photographs
-Poor lighting
-Extreme face angles
-Partial face visibility
-Duplicate photographs
-Large image collections
-Network failures during image download
-Database connectivity issues
+> **Note:** The dependency file in this repository is currently named `requirment.txt`.
 
-These considerations are important because real-world event photographs are significantly less controlled than benchmark datasets.
+---
 
-32. Technology Stack
-Programming
-Python
-Computer Vision / Machine Learning
-InsightFace
-OpenCV
-NumPy
-Backend / Processing
-Python-based processing pipeline
-FastAPI components where applicable
-Database
+# 🗄️ Database Requirements
+
+SpotMe.Ai requires:
+
+* PostgreSQL
+* pgvector extension
+
+The general setup is:
+
+```text
 PostgreSQL
-Vector Search
-pgvector
-HNSW approximate nearest-neighbor indexing
-Data Source
-Google Drive
-33. Project Architecture at a Glance
-                         ┌─────────────────────┐
-                         │    Google Drive     │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │  Image Downloader   │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │  Image Processing   │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │   InsightFace       │
-                         │ Face Detection +    │
-                         │ Embedding Generation│
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │    PostgreSQL       │
-                         │      pgvector       │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │       HNSW          │
-                         │     ANN Index       │
-                         └──────────┬──────────┘
-                                    │
-                         ┌──────────┴──────────┐
-                         │                     │
-                         ▼                     ▼
-                  Query Photograph       Stored Vectors
-                         │                     │
-                         ▼                     │
-                  Query Embedding             │
-                         │                     │
-                         └──────────┬──────────┘
-                                    ▼
-                         ┌─────────────────────┐
-                         │ Similarity Search   │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │ Matching Photographs│
-                         └─────────────────────┘
-34. My Contribution
+    │
+    ▼
+Create Database
+    │
+    ▼
+Enable pgvector
+    │
+    ▼
+Create Required Tables
+    │
+    ▼
+Store Face Embeddings
+    │
+    ▼
+Create Vector Index
+    │
+    ▼
+Run Retrieval
+```
 
-I primarily worked on the machine learning and backend components of SpotMe.Ai.
+> **Security:** Database credentials and API keys should be supplied through environment variables or local configuration and should not be committed to a public repository.
 
-My work included:
+---
 
-Designing and implementing the face-recognition-based retrieval pipeline.
-Working with InsightFace for face analysis and embedding generation.
-Processing and preparing event photographs for embedding generation.
-Implementing image downloading and processing workflows.
-Working with PostgreSQL for storing project data.
-Integrating pgvector for vector embedding storage and similarity search.
-Working with HNSW-based approximate nearest-neighbor indexing.
-Implementing and testing vector-based image retrieval.
-Evaluating retrieval latency and performance.
-Integrating the different stages of the ML and database pipeline.
+# 👨‍💻 My Contribution
 
-The project also involved contributions from other team members in areas such as application and database-related components.
+I primarily worked on the **machine learning and backend components** of SpotMe.Ai.
+
+My contributions included:
+
+* Designing and implementing the face-recognition-based retrieval pipeline.
+* Working with InsightFace for face analysis and embedding generation.
+* Implementing image processing and preparation workflows.
+* Working on event image retrieval and processing.
+* Integrating PostgreSQL with the project.
+* Working with pgvector for vector embedding storage.
+* Implementing vector similarity-based retrieval.
+* Working with HNSW approximate nearest-neighbor indexing.
+* Testing and evaluating retrieval latency.
+* Integrating the machine learning and database components into the overall pipeline.
+
+The project was developed collaboratively, with other team members contributing to additional application and system components.
+
+---
+
+# 🎯 Key Concepts Demonstrated
+
+This project demonstrates practical implementation of:
+
+### Computer Vision
+
+* Face detection
+* Face recognition
+* Image preprocessing
+
+### Deep Learning
+
+* Facial representation learning
+* Embeddings
+* Neural-network-based feature extraction
+
+### Vector Search
+
+* Vector similarity
+* Approximate Nearest Neighbor Search
+* HNSW indexing
+
+### Database Engineering
+
+* PostgreSQL
+* pgvector
+* Vector storage
+* Metadata management
+
+### System Design
+
+* Offline indexing
+* Online retrieval
+* Precomputation
+* Search optimization
+* Latency evaluation
+
+---
+
+# 🔮 Future Improvements
+
+Potential improvements include:
+
+* Multi-face retrieval and result grouping
+* Better duplicate-image detection
+* Adaptive similarity thresholds
+* Batch embedding generation
+* GPU-accelerated processing
+* Background indexing jobs
+* Cloud deployment
+* Improved ranking strategies
+* Pagination for large result sets
+* Retrieval monitoring and analytics
+* Better handling of low-confidence detections
+
+---
+
+# 📌 Project Summary
+
+SpotMe.Ai demonstrates how **computer vision + deep learning + vector databases + approximate nearest-neighbor search** can be combined to solve a practical visual retrieval problem.
+
+The core pipeline is:
+
+```text
+             EVENT PHOTOS
+                   │
+                   ▼
+            Face Detection
+                   │
+                   ▼
+          Face Embeddings
+                   │
+                   ▼
+         PostgreSQL + pgvector
+                   │
+                   ▼
+              HNSW Index
+                   │
+                   ▼
+            Query Embedding
+                   │
+                   ▼
+        Approximate NN Search
+                   │
+                   ▼
+          Similarity Ranking
+                   │
+                   ▼
+          Matching Photographs
+```
+
+### The key idea:
+
+> **Convert faces into searchable vector representations once, index them efficiently, and use vector similarity to retrieve the relevant photographs when a user searches.**
+
+---
+
+## 📂 Repository Structure
+
+```text
+SpotMe.Ai/
+│
+├── compare.py
+├── database.py
+├── download.py
+├── embedding_generate.py
+├── main.py
+├── retrive.py
+├── save_to_database.py
+├── test_latency.py
+├── requirment.txt
+├── facefind.zip
+├── README.md
+└── .gitignore
+```
+
+---
+
+## 📜 Project Status
+
+**Status:** Academic / Prototype Project
+
+**Project Type:** Team Project
+
+**Primary Domain:** Artificial Intelligence • Computer Vision • Vector Search
+
+**Primary Contribution:** Machine Learning Pipeline • Face Embeddings • Image Processing • PostgreSQL/pgvector • Similarity Retrieval • HNSW Search

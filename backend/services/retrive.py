@@ -5,41 +5,37 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import SessionLocal
 from models import EventPhoto
 
-def retrieve_similar_images(event_id: str, image_embedding: list[float]) -> list[str]:
-    """
-    Takes an event_id and a 1D face embedding, and returns a list of matching file paths for that event.
-    """
-    threshold = 0.6 
-    
-    with SessionLocal() as session:
-        results = session.query(EventPhoto).filter(
-            EventPhoto.event_id == event_id,
-            EventPhoto.face_embedding.cosine_distance(image_embedding) < threshold
-        ).order_by(
-            EventPhoto.face_embedding.cosine_distance(image_embedding)
-        ).all()
-        
-    return [row.file_path for row in results]
-
 def retrieve_similar_images_with_scores(
     event_id: str,
     image_embedding: list[float],
     threshold: float = 0.6,
-    limit: int = 50,
+    max_candidates: int = 500,
 ) -> list[tuple[str, float]]:
     """
-    Takes an event_id and a 1D face embedding, and returns matches with their confidence scores.
+    Takes an event_id and a 1D face embedding.
+    Returns deduplicated (unique) matching file paths ordered by best match first (lowest cosine distance).
     """
     with SessionLocal() as session:
         dist = EventPhoto.face_embedding.cosine_distance(image_embedding)
+        
+        # 1. Fetch matching rows ordered from best match to lowest match
         rows = (
-            session.query(EventPhoto, dist.label("score"))
+            session.query(EventPhoto.file_path, dist.label("score"))
             .filter(
                 EventPhoto.event_id == event_id,
                 dist < threshold
             )
             .order_by(dist)
-            .limit(limit)
+            .limit(max_candidates)
             .all()
         )
-    return [(row.EventPhoto.file_path, row.score) for row in rows]
+
+        # 2. Deduplicate by file_path so each photo is returned only once
+        seen_file_ids = set()
+        unique_matches = []
+        for file_path, score in rows:
+            if file_path not in seen_file_ids:
+                seen_file_ids.add(file_path)
+                unique_matches.append((file_path, float(score)))
+
+    return unique_matches

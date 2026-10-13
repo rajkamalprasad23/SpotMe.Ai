@@ -1,32 +1,44 @@
-from googleapiclient.discovery import build
+import os
+import re
 import requests
 import cv2
 import numpy as np
-import re
 from concurrent.futures import ThreadPoolExecutor
+from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-API_KEY = "YOUR_API_KEY"
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = os.getenv("GOOGLE_API_KEY", "")
+
+if not API_KEY or API_KEY == "YOUR_API_KEY":
+    raise ValueError("FATAL ERROR: GOOGLE_API_KEY is not set in .env. Please provide a valid Google Cloud API Key.")
+
 drive_service = build(
     "drive",
     "v3",
     developerKey=API_KEY
 )
-def extract_folder_id(folder_url):
+
+def extract_folder_id(folder_url: str) -> str:
     match = re.search(r'folders/([a-zA-Z0-9_-]+)', folder_url)
     if match:
         return match.group(1)
-    
-    raise ValueError("Invalid folder link")
+    # Also support ?id= style links
+    match = re.search(r'id=([a-zA-Z0-9_-]+)', folder_url)
+    if match:
+        return match.group(1)
+    raise ValueError("Invalid folder link. Could not extract folder ID.")
 
-
-def get_folder_items(folder_id):
+def get_folder_items(folder_id: str):
     items = []
     page_token = None
     try:
         while True:
             response = drive_service.files().list(
-                q=f"'{folder_id}' in parents",
-                fields="nextPageToken, files(id,name,mimeType)",
+                q=f"'{folder_id}' in parents and trashed = false",
+                fields="nextPageToken, files(id, name, mimeType)",
                 pageSize=1000,
                 pageToken=page_token
             ).execute()
@@ -38,13 +50,12 @@ def get_folder_items(folder_id):
 
     except HttpError as e:
         if e.resp.status in [403, 404]:
-            raise Exception("Drive folder is private or inaccessible")
-
+            raise Exception("Drive folder is private, inaccessible, or API key limit exceeded. Make sure link sharing is set to 'Anyone with the link can view'.")
         raise e
 
     return items
 
-def get_all_image_ids(folder_id):
+def get_all_image_ids(folder_id: str):
     file_ids = []
     items = get_folder_items(folder_id)
     for item in items:
@@ -57,22 +68,14 @@ def get_all_image_ids(folder_id):
 
     return file_ids
 
-
-def download_image(file_id):
+def download_image(file_id: str):
     url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media&key={API_KEY}"
-    response = requests.get(url, timeout = 15)
+    response = requests.get(url, timeout=15)
     if response.status_code != 200:
-        return None
-    def download_and_preprocess(fid):
-        img = download_image(fid)
-        if img is None:
-            print(f" Failed to download or decode image ID: {fid}") 
         return None
     image_bytes = np.asarray(bytearray(response.content), dtype=np.uint8)
     img = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
-
     return img
-
 
 def preprocess_image(img, max_size=800):
     h, w = img.shape[:2]
@@ -81,22 +84,19 @@ def preprocess_image(img, max_size=800):
         new_w = int(w * scale)
         new_h = int(h * scale)
         img = cv2.resize(img, (new_w, new_h))
-
     return img
-def download_and_preprocess(fid):
+
+def download_and_preprocess(fid: str):
     img = download_image(fid)
     if img is None:
         return None
-    img = preprocess_image(img)
-    
-    return img
+    return preprocess_image(img)
 
 def batch_generator(items, batch_size=50):
     for i in range(0, len(items), batch_size):
         yield items[i:i + batch_size]
 
-
-def image_stream_from_drive(folder_url, batch_size=100, max_workers=8):
+def image_stream_from_drive(folder_url: str, batch_size=100, max_workers=8):
     folder_id = extract_folder_id(folder_url)
     file_ids = get_all_image_ids(folder_id)
 

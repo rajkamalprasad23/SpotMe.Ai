@@ -132,12 +132,20 @@ async def find_matches(event_id: str = Form(...), selfie: UploadFile = File(...)
 
     formatted_matches = []
     for file_id, score in raw_matches:
+        # Cosine distance ranges from 0 (identical) to 1 (different).
+        # We convert it to an intuitive match percentage (e.g., 85.5% match).
+        similarity_percentage = max(0.0, round((1.0 - score) * 100, 1))
+
         formatted_matches.append({
             "photo_id": file_id,
-            "drive_url": f"https://drive.google.com/thumbnail?id={file_id}&sz=w600"
+            "drive_url": f"https://drive.google.com/thumbnail?id={file_id}&sz=w800",
+            "download_url": f"https://drive.google.com/uc?export=download&id={file_id}",
+            "match_confidence": similarity_percentage
         })
 
     return {
-        "match_summary": {"total_matches": len(formatted_matches)},
+        "match_summary": {
+            "total_matches": len(formatted_matches)
+        },
         "matches": formatted_matches
     }

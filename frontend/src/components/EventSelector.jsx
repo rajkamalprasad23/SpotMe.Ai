@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { Calendar, ChevronDown, Loader2 } from 'lucide-react'
 import { fetchAvailableEvents } from '../services/api'
 
-export default function EventSelector({ selectedEventId, onSelectEvent }) {
+export default function EventSelector({ selectedEventId, onSelectEvent, refreshKey }) {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // 1. Fetch available events from FastAPI as soon as the component loads
+  // 1. Fetch available events from FastAPI whenever component mounts or refreshKey changes
   useEffect(() => {
     async function loadEvents() {
       try {
@@ -28,7 +28,7 @@ export default function EventSelector({ selectedEventId, onSelectEvent }) {
     }
 
     loadEvents()
-  }, [])
+  }, [refreshKey])
 
   return (
     <div className="w-full space-y-2 text-left">

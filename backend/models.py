@@ -1,8 +1,19 @@
-from sqlalchemy import Column, Integer, String, Index, ForeignKey
+from sqlalchemy import Column, Integer, String, Index, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from database import Base
 import uuid
+from datetime import datetime
+
+class Organizer(Base):
+    """Table 0: Stores registered organizer accounts"""
+    __tablename__ = "organizers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class Event(Base):
     """Table 1: Stores the events"""

@@ -1,24 +1,19 @@
-import { useState } from 'react'
-import { Download, X, ChevronDown, Sparkles, ImageOff } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Download, X, ChevronDown, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react'
 
-// Sub-component for individual photo cards to handle local image loading & fallbacks
 function GalleryCard({ photo, onSelect }) {
   const [errorCount, setErrorCount] = useState(0)
   const [isLoaded, setIsLoaded] = useState(false)
 
-  // Triple-layer Google Drive CDN fallback chain
   const getImageUrl = () => {
     const fileId = photo.photo_id
     if (!fileId) return photo.drive_url
 
     if (errorCount === 0) {
-      // Primary: High-speed Google UserContent CDN (bypasses drive.google.com cookies/sessions)
       return `https://lh3.googleusercontent.com/d/${fileId}=w800`
     } else if (errorCount === 1) {
-      // Secondary fallback: Drive Thumbnail endpoint
       return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`
     } else if (errorCount === 2) {
-      // Tertiary fallback: Direct export view
       return `https://drive.google.com/uc?export=view&id=${fileId}`
     }
     return null
@@ -28,14 +23,11 @@ function GalleryCard({ photo, onSelect }) {
 
   return (
     <div
-      onClick={() => onSelect(photo)}
-      className="group relative aspect-square rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800/80 cursor-pointer transition-all duration-300 hover:border-zinc-700 hover:shadow-lg hover:shadow-black/50"
+      onClick={onSelect}
+      className="group relative aspect-square rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200 cursor-pointer transition-all duration-200 hover:border-zinc-300 hover:shadow-md"
     >
-      {/* Loading Shimmer Placeholder */}
-      {!isLoaded && !currentSrc && (
-        <div className="absolute inset-0 bg-zinc-900 animate-pulse flex items-center justify-center">
-          <Sparkles className="w-4 h-4 text-zinc-700" />
-        </div>
+      {!isLoaded && currentSrc && (
+        <div className="absolute inset-0 bg-zinc-100 animate-pulse" />
       )}
 
       {currentSrc ? (
@@ -45,43 +37,37 @@ function GalleryCard({ photo, onSelect }) {
           referrerPolicy="no-referrer"
           loading="lazy"
           onLoad={() => setIsLoaded(true)}
-          onError={() => {
-            // Attempt next fallback in chain
-            setErrorCount((prev) => prev + 1)
-          }}
-          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+          onError={() => setErrorCount((prev) => prev + 1)}
+          className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-[1.03] ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
         />
       ) : (
-        /* Final fallback if Google blocks all previews: show download card */
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-zinc-900/90 text-zinc-400 space-y-2">
-          <ImageOff className="w-5 h-5 text-zinc-600" />
-          <p className="text-[11px] text-zinc-400">Preview protected by Drive</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center bg-zinc-50 text-zinc-500 space-y-1.5">
+          <ImageOff className="w-4 h-4 text-zinc-400" />
+          <p className="text-[11px] text-zinc-500">Preview protected</p>
           <a
             href={photo.download_url}
             download
             onClick={(e) => e.stopPropagation()}
-            className="text-[10px] text-indigo-400 hover:underline flex items-center gap-1 font-medium"
+            className="text-[11px] text-zinc-900 underline font-medium"
           >
-            <Download className="w-3 h-3" /> Download photo
+            Download
           </a>
         </div>
       )}
 
-      {/* Subtle Gradient Overlay on Hover */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-3 pointer-events-none">
-        {/* Match Badge */}
+      {/* Subtle overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex flex-col justify-between p-3 pointer-events-none">
         <div className="self-end pointer-events-auto">
-          <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-emerald-400 border border-emerald-500/30">
+          <span className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-white border border-white/20">
             {photo.match_confidence ? `${photo.match_confidence}%` : 'Match'}
           </span>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex items-center justify-between text-white pointer-events-auto">
-          <span className="text-xs font-medium text-zinc-200 truncate">
-            View Full
+          <span className="text-[11px] font-medium text-zinc-200">
+            Inspect
           </span>
           <a
             href={photo.download_url}
@@ -102,22 +88,7 @@ export default function PhotoGallery({ matches = [], totalMatches = 0 }) {
   const INITIAL_COUNT = 12
   const PAGE_SIZE = 12
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT)
-  const [selectedPhoto, setSelectedPhoto] = useState(null)
-
-  // Empty state
-  if (matches.length === 0) {
-    return (
-      <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center space-y-3">
-        <div className="w-10 h-10 rounded-full bg-zinc-800/80 mx-auto flex items-center justify-center text-zinc-400">
-          <Sparkles className="w-5 h-5 text-zinc-500" />
-        </div>
-        <p className="text-sm font-medium text-zinc-300">No matching photos found</p>
-        <p className="text-xs text-zinc-500 max-w-xs mx-auto">
-          We couldn't detect your face in this event. Try uploading another selfie with direct lighting and a clear front angle.
-        </p>
-      </div>
-    )
-  }
+  const [selectedIndex, setSelectedIndex] = useState(null)
 
   const visiblePhotos = matches.slice(0, visibleCount)
   const hasMore = visibleCount < matches.length
@@ -126,30 +97,77 @@ export default function PhotoGallery({ matches = [], totalMatches = 0 }) {
     setVisibleCount((prev) => prev + PAGE_SIZE)
   }
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (selectedIndex === null) return
+
+      if (e.key === 'ArrowRight') {
+        setSelectedIndex((prev) => (prev < matches.length - 1 ? prev + 1 : 0))
+      } else if (e.key === 'ArrowLeft') {
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : matches.length - 1))
+      } else if (e.key === 'Escape') {
+        setSelectedIndex(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedIndex, matches.length])
+
+  const handleDownloadAll = () => {
+    matches.forEach((photo) => {
+      window.open(photo.download_url, '_blank')
+    })
+  }
+
+  if (matches.length === 0) {
+    return (
+      <div className="p-8 rounded-xl bg-white border border-zinc-200 text-center space-y-1.5 shadow-xs">
+        <p className="text-xs sm:text-sm font-semibold text-zinc-900">No matching photographs</p>
+        <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+          The face in the selfie was not detected in this event. Ensure front lighting and high clarity.
+        </p>
+      </div>
+    )
+  }
+
+  const activePhoto = selectedIndex !== null ? matches[selectedIndex] : null
+
   return (
-    <section className="space-y-6 pt-4 text-left">
+    <section className="space-y-4 text-left">
       {/* Results Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+      <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
         <div>
-          <h2 className="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
-            <span>Your Matches</span>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              {totalMatches} found
+          <h2 className="text-xs sm:text-sm font-semibold text-zinc-900 tracking-tight flex items-center gap-2">
+            <span>Verified Results</span>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200">
+              {totalMatches} photos
             </span>
           </h2>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Showing {visiblePhotos.length} of {totalMatches} photos
+          <p className="text-[11px] text-zinc-500 mt-0.5">
+            Displaying {visiblePhotos.length} of {totalMatches}
           </p>
         </div>
+
+        {matches.length > 1 && (
+          <button
+            type="button"
+            onClick={handleDownloadAll}
+            className="text-xs font-medium text-zinc-900 hover:text-black px-3 py-1.5 rounded-lg bg-white hover:bg-zinc-50 border border-zinc-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <Download className="w-3.5 h-3.5 text-zinc-500" />
+            <span>Open All ({matches.length})</span>
+          </button>
+        )}
       </div>
 
       {/* Photo Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {visiblePhotos.map((photo, index) => (
           <GalleryCard
             key={photo.photo_id || index}
             photo={photo}
-            onSelect={setSelectedPhoto}
+            onSelect={() => setSelectedIndex(index)}
           />
         ))}
       </div>
@@ -160,63 +178,91 @@ export default function PhotoGallery({ matches = [], totalMatches = 0 }) {
           <button
             type="button"
             onClick={handleLoadMore}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-medium bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 hover:bg-zinc-800/60 transition-all cursor-pointer active:scale-95 shadow-sm"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium bg-white border border-zinc-200 text-zinc-800 hover:bg-zinc-50 transition-all cursor-pointer shadow-xs active:scale-95"
           >
-            <ChevronDown className="w-4 h-4 text-indigo-400" />
+            <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
             <span>Load More ({matches.length - visibleCount} remaining)</span>
           </button>
         </div>
       )}
 
-      {/* Lightbox Modal */}
-      {selectedPhoto && (
+      {/* Lightbox Modal Carousel */}
+      {activePhoto && (
         <div
-          onClick={() => setSelectedPhoto(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-200"
+          onClick={() => setSelectedIndex(null)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 transition-all duration-150"
         >
+          {matches.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setSelectedIndex((prev) => (prev > 0 ? prev - 1 : matches.length - 1))
+              }}
+              title="Previous photo (←)"
+              className="absolute left-3 sm:left-6 z-10 w-9 h-9 rounded-full bg-zinc-900 border border-zinc-700 text-zinc-200 hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          )}
+
+          {matches.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setSelectedIndex((prev) => (prev < matches.length - 1 ? prev + 1 : 0))
+              }}
+              title="Next photo (→)"
+              className="absolute right-3 sm:right-6 z-10 w-9 h-9 rounded-full bg-zinc-900 border border-zinc-700 text-zinc-200 hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative max-w-3xl w-full max-h-[85vh] bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl"
+            className="relative max-w-3xl w-full max-h-[88vh] bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl"
           >
-            {/* Modal Top Bar */}
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between text-zinc-200">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-zinc-400">Match Confidence:</span>
-                <span className="text-xs font-semibold text-emerald-400 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-                  {selectedPhoto.match_confidence ? `${selectedPhoto.match_confidence}% Match` : 'Verified Face'}
+            <div className="p-3.5 border-b border-zinc-800 flex items-center justify-between text-zinc-200">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-medium text-zinc-400">
+                  {selectedIndex + 1} of {matches.length}
+                </span>
+                <span className="text-zinc-700">•</span>
+                <span className="font-semibold text-white px-2 py-0.5 rounded-md bg-zinc-950 border border-zinc-800">
+                  {activePhoto.match_confidence ? `${activePhoto.match_confidence}% Match` : 'Verified Face'}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
                 <a
-                  href={selectedPhoto.download_url}
+                  href={activePhoto.download_url}
                   download
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-zinc-950 text-xs font-semibold hover:bg-zinc-100 transition-colors shadow-xs"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download Full Resolution</span>
+                  <span>Download High-Res</span>
                 </a>
                 <button
                   type="button"
-                  onClick={() => setSelectedPhoto(null)}
-                  className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 flex items-center justify-center transition-colors cursor-pointer"
+                  onClick={() => setSelectedIndex(null)}
+                  className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* Modal Image Display */}
-            <div className="flex-1 overflow-auto bg-black flex items-center justify-center p-2">
+            <div className="flex-1 overflow-auto bg-black flex items-center justify-center p-3 min-h-[50vh]">
               <img
-                src={`https://lh3.googleusercontent.com/d/${selectedPhoto.photo_id}=w1200`}
+                src={`https://lh3.googleusercontent.com/d/${activePhoto.photo_id}=w1200`}
                 alt="Enlarged Match"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
-                  // Fallback to direct export view
-                  e.currentTarget.src = selectedPhoto.download_url
+                  e.currentTarget.src = activePhoto.download_url
                 }}
-                className="max-h-[70vh] w-auto object-contain rounded-lg shadow-lg"
+                className="max-h-[72vh] w-auto object-contain rounded-lg shadow-xl"
               />
             </div>
           </div>

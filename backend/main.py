@@ -3,18 +3,24 @@ import logging
 import numpy as np
 import cv2
 
-from fastapi import FastAPI, BackgroundTasks, File, UploadFile, Form
+from fastapi import FastAPI, BackgroundTasks, File, UploadFile, Form, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl, field_validator
 
-# Local modules - updated for the new folder structure
+# Local modules
 from services import embedding_generate
 from services import save_to_database
 from services import download
 from services import retrive
+from services.auth import (
+    register_new_organizer,
+    verify_organizer_login,
+    create_access_token,
+    get_current_admin
+)
 from database import SessionLocal, engine
-from models import Event, Base
+from models import Event, EventPhoto, Base
 
 # ---------------------------------------------------------
 # 1. SETUP & CONFIGURATION
@@ -22,7 +28,7 @@ from models import Event, Base
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Create the database tables if they don't exist yet
+# Create the database tables if they don't exist yet (including organizers table)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="SpotMe.Ai Backend", description="Multi-Event API for Face Recognition")
@@ -37,6 +43,10 @@ app.add_middleware(
 # ---------------------------------------------------------
 # 2. DATA VALIDATION MODELS (Schemas)
 # ---------------------------------------------------------
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
 class EventCreateRequest(BaseModel):
     """
     Expected structure when the Admin creates a new event.
@@ -84,10 +94,66 @@ def process_images_in_background(event_id: str, folder_url: str):
         logger.error(f"FATAL ERROR IN BACKGROUND TASK: {e}", exc_info=True)
 
 # ---------------------------------------------------------
-# 4. ADMIN ROUTES
+# 4. ADMIN & AUTHENTICATION ROUTES
 # ---------------------------------------------------------
+@app.post("/admin/register")
+async def admin_register(request: AdminLoginRequest):
+    """Registers a new organizer into PostgreSQL and returns signed JWT."""
+    clean_username = register_new_organizer(request.username, request.password)
+    token = create_access_token(clean_username)
+    return {
+        "status": "success",
+        "access_token": token,
+        "token_type": "bearer",
+        "username": clean_username,
+        "message": f"Organizer account '{clean_username}' registered successfully."
+    }
+
+@app.post("/admin/login")
+async def admin_login(request: AdminLoginRequest):
+    """Verifies organizer credentials against DB and returns a signed JWT access token."""
+    if not verify_organizer_login(request.username, request.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid organizer username or password"
+        )
+    token = create_access_token(request.username)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "username": request.username
+    }
+
+@app.get("/admin/verify")
+async def verify_admin(current_admin: str = Depends(get_current_admin)):
+    """Validates existing session token."""
+    return {"status": "authenticated", "username": current_admin}
+
+@app.get("/admin/all-events")
+async def get_admin_all_events(current_admin: str = Depends(get_current_admin)):
+    """Protected: Returns all events including processing states and photo counts."""
+    db = SessionLocal()
+    events = db.query(Event).order_by(Event.name).all()
+    response = []
+    for e in events:
+        photo_count = db.query(EventPhoto).filter(EventPhoto.event_id == e.id).count()
+        response.append({
+            "id": e.id,
+            "name": e.name,
+            "status": e.status,
+            "folder_url": e.folder_url,
+            "photo_count": photo_count
+        })
+    db.close()
+    return response
+
 @app.post("/admin/events")
-async def create_event(request: EventCreateRequest, background_tasks: BackgroundTasks):
+async def create_event(
+    request: EventCreateRequest,
+    background_tasks: BackgroundTasks,
+    current_admin: str = Depends(get_current_admin)
+):
+    """Protected route: Requires valid JWT Bearer token."""
     url_str = str(request.folder_url)
     db = SessionLocal()
     new_event = Event(name=request.event_name, folder_url=url_str, status="processing")
@@ -112,7 +178,31 @@ async def create_event(request: EventCreateRequest, background_tasks: Background
 async def get_available_events():
     db = SessionLocal()
     events = db.query(Event).filter(Event.status == "ready").all()
-    response = [{"id": e.id, "name": e.name} for e in events]
+    response = []
+    for e in events:
+        photo_count = db.query(EventPhoto).filter(EventPhoto.event_id == e.id).count()
+        response.append({
+            "id": e.id,
+            "name": e.name,
+            "photo_count": photo_count
+        })
+    db.close()
+    return response
+
+@app.get("/events/{event_id}")
+async def get_event_by_id(event_id: str):
+    db = SessionLocal()
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        db.close()
+        raise HTTPException(status_code=404, detail="Event not found")
+    photo_count = db.query(EventPhoto).filter(EventPhoto.event_id == event.id).count()
+    response = {
+        "id": event.id,
+        "name": event.name,
+        "status": event.status,
+        "photo_count": photo_count
+    }
     db.close()
     return response
 
@@ -132,8 +222,6 @@ async def find_matches(event_id: str = Form(...), selfie: UploadFile = File(...)
 
     formatted_matches = []
     for file_id, score in raw_matches:
-        # Cosine distance ranges from 0 (identical) to 1 (different).
-        # We convert it to an intuitive match percentage (e.g., 85.5% match).
         similarity_percentage = max(0.0, round((1.0 - score) * 100, 1))
 
         formatted_matches.append({
